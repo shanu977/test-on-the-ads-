@@ -3,21 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import ChatMessage, { type ChatMessageType } from "./ChatMessage";
 import ChatInput from "./ChatInput";
-import NativeAd from "@/components/ads/NativeAd";
-
-const AD_EVERY_N_MESSAGES = 6; // insert ad slot every N messages (future use)
-
-function shouldShowAd(index: number): boolean {
-  // Show ad slot after every AD_EVERY_N_MESSAGES messages, but not after the last one if streaming
-  // Currently NativeAd returns null in production, so this is layout-safe.
-  return (index + 1) % AD_EVERY_N_MESSAGES === 0;
-}
+import AdContainer from "@/components/ads/AdContainer";
+import { shouldShowAd } from "@/lib/ads/ad-placement";
 
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string>(() => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return Math.random().toString(36).slice(2);
+    }
+  });
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +29,11 @@ export default function Chat() {
     setMessages([]);
     setInput("");
     setError(null);
+    try {
+      setSessionId(crypto.randomUUID());
+    } catch {
+      setSessionId(Math.random().toString(36).slice(2));
+    }
   }
 
   async function send() {
@@ -75,6 +80,10 @@ export default function Chat() {
     }
   }
 
+  // Deterministic ad placement: local counters during render (no Math.random)
+  let localAdsShown = 0;
+  let localLastAdIndex: number | null = null;
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Header actions inside chat for mobile clarity */}
@@ -109,7 +118,6 @@ export default function Chat() {
               <h2 className="mt-4 text-lg font-semibold text-zinc-100">How can I help you today?</h2>
               <p className="mt-2 text-sm leading-6 text-zinc-400">
                 Ask anything — code, ideas, explanations. This is a test environment for Nexuss Ads.
-                No ads are shown yet.
               </p>
               <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {[
@@ -130,14 +138,34 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Message renderer with optional ad slot architecture */}
-          {messages.map((m, idx) => (
-            <div key={m.id} className="flex flex-col gap-4">
-              <ChatMessage message={m} />
-              {/* Ad insertion point — NativeAd returns null in production today */}
-              {shouldShowAd(idx) && <NativeAd slot={`chat-after-${idx + 1}`} />}
-            </div>
-          ))}
+          {/* Message renderer + deterministic NativeAd insertion (UI-only, not sent to /api/chat) */}
+          {messages.map((m, idx) => {
+            const shouldInsertAd =
+              !loading &&
+              shouldShowAd({
+                messageCount: messages.length,
+                adsShown: localAdsShown,
+                isGenerating: loading,
+                sessionId,
+                lastAdMessageIndex: localLastAdIndex,
+                currentMessageIndex: idx,
+                currentMessageRole: m.role,
+              });
+
+            if (shouldInsertAd) {
+              localAdsShown += 1;
+              localLastAdIndex = idx;
+            }
+
+            return (
+              <div key={m.id} className="flex flex-col gap-2">
+                <ChatMessage message={m} />
+                {shouldInsertAd && (
+                  <AdContainer slot={`session-${sessionId.slice(0, 8)}-after-${idx + 1}`} />
+                )}
+              </div>
+            );
+          })}
 
           {loading && (
             <div className="flex gap-3">
@@ -167,12 +195,12 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Sticky input */}
+      {/* Sticky input - never covered by ad */}
       <div className="border-t border-zinc-800 bg-zinc-950 p-4 sm:p-6">
         <div className="mx-auto w-full max-w-3xl">
           <ChatInput value={input} onChange={setInput} onSend={send} loading={loading} />
           <p className="mt-3 text-center text-xs text-zinc-500">
-            Groq-powered · This is a testing environment · No ads displayed yet
+            Groq-powered · Sponsored content is clearly labeled and separate from AI responses
           </p>
         </div>
       </div>
