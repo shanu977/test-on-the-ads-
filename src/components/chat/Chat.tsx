@@ -123,8 +123,12 @@ export default function Chat() {
             <ChatMessage key={m.id} message={m} />
           ))}
 
-          {/* Phase 2: ONE real Adsterra ad after Groq response — polished sponsored shell */}
-          {messages.some((m) => m.role === "assistant") && <NativeAd />}
+          {/* Phase 3: ONE fresh Adsterra ad per completed assistant turn — deterministic turn lifecycle */}
+          {(() => {
+            const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+            if (!lastAssistant) return null;
+            return <NativeAd key={lastAssistant.id} turnId={lastAssistant.id} />;
+          })()}
 
           {loading && (
             <div className="flex gap-3">
