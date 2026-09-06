@@ -12,23 +12,21 @@ type Props = {
 };
 
 /**
- * NativeAd — Phase 3 premium native + fresh load per completed assistant turn.
- * Preserves exact Adsterra URL/container, no fake/iframe/proxy.
- * Each turnId (key) creates a fresh instance: old script/container cleaned, new script injected.
- * Premium lighter shell, premium spacing, empty collapses.
+ * NativeAd — Premium native conversational ad (refined for Nexuss/ChatGPT-style).
+ * INVARIANTS preserved: exact Adsterra URL/container, no fake/iframe/proxy, no creative manipulation.
+ * Lifecycle: key={completedAssistantTurnId} ensures EXACTLY ONE fresh instance per completed turn.
+ * Cleanup scoped to instance (script ref), StrictMode safe, /ad-test untouched.
+ * Empty inventory collapses to 0px with zero padding/margins — never shows empty box/loader.
  */
 export default function NativeAd({ turnId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const hasContent = status === "content";
 
-  // Fresh script per turn — scoped cleanup, duplicate protection, StrictMode safe
+  // Fresh script per completed turn — scoped, no global purge of unrelated scripts
   useEffect(() => {
     setStatus("loading");
-
-    // Remove any stale script from previous instance to allow fresh inventory request
-    const stale = document.querySelector(`script[src="${ADSTERRA_SRC}"]`) as HTMLScriptElement | null;
-    if (stale) stale.remove();
 
     const s = document.createElement("script");
     s.async = true;
@@ -36,19 +34,19 @@ export default function NativeAd({ turnId }: Props) {
     s.src = ADSTERRA_SRC;
     if (turnId) s.setAttribute("data-ad-turn", turnId);
     s.onerror = () => setStatus("error");
+    scriptRef.current = s;
     document.body.appendChild(s);
 
-    // Debug impression ready (internal, no analytics sent)
-    // console.debug(`[NativeAd] turn ${turnId} script injected`);
-
     return () => {
-      // Cleanup this instance's script on unmount / key change
-      s.remove();
-      // Do not globally delete unrelated elements — scoped to this script only
+      // Scoped cleanup: remove only the script this instance created
+      if (scriptRef.current && scriptRef.current.parentNode) {
+        scriptRef.current.remove();
+      }
+      scriptRef.current = null;
     };
   }, [turnId]);
 
-  // Observe container for real inventory — collapse if empty
+  // Empty-inventory detection — smooth collapse, no loader shown
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -67,9 +65,7 @@ export default function NativeAd({ turnId }: Props) {
     if (check()) return;
 
     const mo = new MutationObserver(() => {
-      if (check()) {
-        mo.disconnect();
-      }
+      if (check()) mo.disconnect();
     });
     mo.observe(el, { childList: true, subtree: true });
 
@@ -84,7 +80,6 @@ export default function NativeAd({ turnId }: Props) {
 
     const timeout = setTimeout(() => {
       clearInterval(interval);
-      // If still no content after 12s, mark empty and collapse
       if (!check()) setStatus((prev) => (prev === "content" ? prev : "empty"));
     }, 12000);
 
@@ -96,11 +91,13 @@ export default function NativeAd({ turnId }: Props) {
     };
   }, [turnId]);
 
-  // Premium native shell — light, no banner look, conversation-native
+  // Conversational native: subtle, trustworthy, not banner-like
+  // Spacing: conversation→ad 20-28px (gap-4 16px + mt-2 8px = 24px), label→ad 8-12px, ad→next gap-4
+  // Responsive: w-full max-w-full, no overflow, mobile reduced padding
   return (
     <div
-      className={`w-full max-w-full overflow-hidden transition-all duration-300 ease-out ${
-        hasContent ? "mt-6 opacity-100" : "pointer-events-none max-h-0 opacity-0 m-0 p-0"
+      className={`w-full max-w-full overflow-hidden font-sans transition-opacity duration-200 ease-out ${
+        hasContent ? "mt-2 opacity-100" : "pointer-events-none max-h-0 opacity-0 m-0 p-0"
       }`}
       aria-label="Sponsored advertisement"
       data-has-content={hasContent ? "true" : "false"}
@@ -108,31 +105,27 @@ export default function NativeAd({ turnId }: Props) {
       data-status={status}
     >
       <div
-        className={`rounded-2xl border bg-zinc-900/30 backdrop-blur-sm ${
-          hasContent ? "border-zinc-800/50 p-2.5 sm:p-3" : "border-transparent p-0"
+        className={`rounded-xl border bg-zinc-900/20 ${
+          hasContent ? "border-zinc-800/30 px-2 py-2 sm:px-3 sm:py-2.5" : "border-transparent p-0"
         }`}
       >
-        {/* Subtle premium header — 8-12px above ad */}
-        <div className="flex items-center gap-2 px-1 pb-2">
-          <span className="text-[11px] font-medium tracking-widest uppercase text-zinc-500">
-            Sponsored
+        {/* Disclosure — subtle inline, secondary, not badge */}
+        <div className="flex items-center gap-1.5 px-0.5 pb-2">
+          <span className="text-[11px] font-normal tracking-wide text-zinc-500">Sponsored</span>
+          <span className="text-zinc-600 text-[11px]" aria-hidden>
+            ·
           </span>
-          <span className="h-3 w-px bg-zinc-800/60" aria-hidden />
-          <span className="text-[11px] tracking-wide text-zinc-600">Advertisement</span>
+          <span className="text-[11px] font-normal tracking-wide text-zinc-500">Advertisement</span>
         </div>
 
-        {/* Real Adsterra — untouched creative */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-950 overflow-hidden">
+        {/* Real Adsterra — untouched, directly injected */}
+        <div className="rounded-lg border border-zinc-800/30 bg-zinc-900/10 overflow-hidden">
           <div
             ref={containerRef}
             id={CONTAINER_ID}
             className="w-full max-w-full [&_img]:max-w-full [&_img]:h-auto"
           />
         </div>
-
-        <p className="mt-2 px-1 text-[10px] leading-none text-zinc-500/80">
-          Sponsored • Not an AI recommendation
-        </p>
       </div>
     </div>
   );
