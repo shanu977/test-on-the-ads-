@@ -123,12 +123,8 @@ export default function Chat() {
             <ChatMessage key={m.id} message={m} />
           ))}
 
-          {/* Phase 1: ONE real Adsterra ad after Groq response — reused from /ad-test */}
-          {messages.some((m) => m.role === "assistant") && (
-            <div className="mt-2">
-              <NativeAd />
-            </div>
-          )}
+          {/* Phase 2: ONE real Adsterra ad after Groq response — polished sponsored shell */}
+          {messages.some((m) => m.role === "assistant") && <NativeAd />}
 
           {loading && (
             <div className="flex gap-3">
