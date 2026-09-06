@@ -28,7 +28,7 @@ export default function AdContainer({ slot = "native-1", onError }: AdContainerP
     >
       {/* Subtle separator like reference: thin line with spacing */}
       <div className="mb-3 h-px bg-zinc-800/60" aria-hidden />
-      <SponsoredCard slot={slot} />
+      <SponsoredCard slot={slot} onError={() => setFailed(true)} />
       {/* If SponsoredCard/NativeAd signals failure, parent can hide */}
       <span className="sr-only" aria-hidden>
         Sponsored content — advertisement

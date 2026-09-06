@@ -4,6 +4,7 @@ import NativeAd from "./NativeAd";
 
 type SponsoredCardProps = {
   slot?: string;
+  onError?: () => void;
 };
 
 /**
@@ -14,7 +15,7 @@ type SponsoredCardProps = {
  * - rounded card, subtle background, compact, responsive
  * - Does NOT imitate ChatGPT branding, not an AI message
  */
-export default function SponsoredCard({ slot = "native-1" }: SponsoredCardProps) {
+export default function SponsoredCard({ slot = "native-1", onError }: SponsoredCardProps) {
   return (
     <div
       className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-sm overflow-hidden"
@@ -47,7 +48,7 @@ export default function SponsoredCard({ slot = "native-1" }: SponsoredCardProps)
       {/* Content */}
       <div className="p-4">
         {/* Isolated Adsterra integration point */}
-        <NativeAd slot={slot} />
+        <NativeAd slot={slot} onError={onError} />
       </div>
     </div>
   );

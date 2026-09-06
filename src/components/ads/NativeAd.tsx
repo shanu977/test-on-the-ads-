@@ -4,97 +4,99 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * NativeAd — isolated Adsterra Native Banner integration point.
+ * Real Adsterra code (do NOT modify):
+ * <script async="async" data-cfasync="false" src="https://pl31209749.profitableratecpmnetwork.com/839a36ce65a197c2f9ac39c8e70ca81e/invoke.js"></script>
+ * <div id="container-839a36ce65a197c2f9ac39c8e70ca81e"></div>
  *
  * SECURITY:
- * - Only this file should embed the Adsterra script.
- * - Do NOT put Adsterra script in /api/chat.
+ * - Only this file loads the Adsterra script.
+ * - Do NOT put script in /api/chat, middleware, layout, or global HTML.
  * - Do NOT use NEXT_PUBLIC_GROQ_API_KEY.
- *
- * CURRENT STATE (before Adsterra approval):
- * - Shows deterministic development preview "Ad placement preview"
- * - No fake advertiser data, no hard-coded product
- * - Gracefully collapses on load failure, never breaks chat
- *
- * FUTURE INTEGRATION (when script provided):
- *   Replace the placeholder branch below with:
- *     <div id="container-XXXX"></div>
- *     <script async src="https://...adsterra..."></script>
- *   Use useEffect to inject <script> dynamically to allow lazy-load
- *   and error handling. Keep slot prop for container id mapping.
- *
- * Example (do NOT enable yet):
- *   useEffect(() => {
- *     const s = document.createElement("script");
- *     s.src = "https://...adsterra-native-banner.js";
- *     s.async = true;
- *     s.onload = () => setLoaded(true);
- *     s.onerror = () => setFailed(true);
- *     containerRef.current?.appendChild(s);
- *     return () => s.remove();
- *   }, []);
+ * - Script is public ad code, separate from private GROQ_API_KEY.
  */
+
+const ADSTERRA_CONTAINER_ID = "container-839a36ce65a197c2f9ac39c8e70ca81e";
+const ADSTERRA_SCRIPT_SRC =
+  "https://pl31209749.profitableratecpmnetwork.com/839a36ce65a197c2f9ac39c8e70ca81e/invoke.js";
+const ADSTERRA_SCRIPT_ID = "adsterra-native-banner-script";
 
 type NativeAdProps = {
   slot?: string;
-  /** Force preview even if env disables it (unused now, for tests) */
-  debug?: boolean;
+  onError?: () => void;
 };
 
-export default function NativeAd({ slot = "native-1", debug = false }: NativeAdProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function NativeAd({ slot, onError }: NativeAdProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const scriptInjectedRef = useRef(false);
   const [failed, setFailed] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    // Guard against React Strict Mode double-mount
+    if (scriptInjectedRef.current) return;
 
-  // Graceful failure: collapse instead of broken blank block
+    // If script already exists globally (e.g., previous mount / one ad per session), don't inject again
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${ADSTERRA_SCRIPT_SRC}"]`
+    );
+    if (existing) {
+      scriptInjectedRef.current = true;
+      return;
+    }
+
+    // Only inject after container is in DOM
+    const container = document.getElementById(ADSTERRA_CONTAINER_ID);
+    if (!container && !wrapperRef.current) {
+      // Container not yet rendered — defer one tick
+      const t = setTimeout(() => {
+        // retry logic delegated to next effect run not needed; container is rendered synchronously
+      }, 50);
+      return () => clearTimeout(t);
+    }
+
+    try {
+      const script = document.createElement("script");
+      script.id = ADSTERRA_SCRIPT_ID;
+      script.async = true;
+      script.setAttribute("data-cfasync", "false");
+      script.src = ADSTERRA_SCRIPT_SRC;
+      script.onerror = () => {
+        setFailed(true);
+        onError?.();
+      };
+      // Do not break chat on load failure; just collapse
+      // Append to wrapper to keep DOM scoped, or head — both work. Wrapper keeps cleanup simple.
+      // Spec: append after container exists. Container is sibling inside wrapper.
+      wrapperRef.current?.appendChild(script);
+      // Also ensure script is discoverable globally
+      scriptInjectedRef.current = true;
+
+      return () => {
+        // Do not remove global script on unmount to avoid duplicate re-injection race
+        // but cleanup listeners
+        script.onerror = null;
+      };
+    } catch {
+      setFailed(true);
+      onError?.();
+    }
+  }, [onError]);
+
   if (failed) return null;
 
-  // Lazy-load guard: don't render placeholder on server to avoid hydration mismatch
-  // After mount, show preview. Real Adsterra would lazy-load here via IntersectionObserver.
-  // Keeping it lightweight to not block chatbot rendering or Groq responses.
-
-  // Development preview — clearly labeled, not a product ad
-  // When real Adsterra code arrives, replace this branch with script injection
-  // and keep the same outer lazy/error structure.
   return (
     <div
-      ref={containerRef}
-      data-ad-slot={slot}
-      data-ad-state={failed ? "failed" : mounted ? "preview" : "idle"}
-      className="w-full"
+      ref={wrapperRef}
+      data-ad-slot={slot ?? ADSTERRA_CONTAINER_ID}
+      className="w-full min-w-0"
       aria-label="Advertisement"
     >
-      <div className="rounded-xl border border-dashed border-zinc-700 bg-zinc-900/70 px-4 py-5 text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-          Ad placement preview
-        </p>
-        <p className="mt-1.5 text-sm leading-5 text-zinc-400">
-          Native ad will render here after Adsterra approval.
-        </p>
-        <p className="mt-2 text-[11px] text-zinc-600">
-          This is a development placeholder — no advertiser data.
-        </p>
-        {/* Accessible link placeholder to keep keyboard focus pattern realistic without real ad */}
-        <a
-          href="#"
-          onClick={(e) => e.preventDefault()}
-          className="mt-3 inline-flex items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
-          aria-label="Learn more (placeholder ad)"
-        >
-          Learn more
-        </a>
-        <p className="mt-2 text-[10px] text-zinc-600" aria-hidden>
-          slot: {slot}
-        </p>
-      </div>
-
-      {/* Real Adsterra injection point example (commented, for future):
-      <div id={`adsterra-${slot}`} className="min-h-[120px]" />
-      // In useEffect, inject script with onerror={() => setFailed(true)}
-      */}
+      {/* Required Adsterra container — ID must remain exactly as provided, single instance */}
+      <div
+        id={ADSTERRA_CONTAINER_ID}
+        className="w-full min-w-0 overflow-hidden"
+        // Adsterra injects its native creative here
+      />
+      {/* Script is injected dynamically via useEffect above */}
     </div>
   );
 }
