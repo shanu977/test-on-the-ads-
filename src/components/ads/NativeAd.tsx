@@ -21,12 +21,12 @@ type Props = {
 export default function NativeAd({ turnId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>("loading");
   const hasContent = status === "content";
 
   // Fresh script per completed turn — scoped, no global purge of unrelated scripts
   useEffect(() => {
-    setStatus("loading");
+
 
     const s = document.createElement("script");
     s.async = true;
