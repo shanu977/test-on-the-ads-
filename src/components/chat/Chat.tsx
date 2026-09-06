@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ChatMessage, { type ChatMessageType } from "./ChatMessage";
 import ChatInput from "./ChatInput";
+import NativeAd from "@/components/ads/NativeAd";
 
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
@@ -121,6 +122,13 @@ export default function Chat() {
           {messages.map((m) => (
             <ChatMessage key={m.id} message={m} />
           ))}
+
+          {/* Phase 1: ONE real Adsterra ad after Groq response — reused from /ad-test */}
+          {messages.some((m) => m.role === "assistant") && (
+            <div className="mt-2">
+              <NativeAd />
+            </div>
+          )}
 
           {loading && (
             <div className="flex gap-3">
