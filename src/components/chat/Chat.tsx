@@ -3,21 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import ChatMessage, { type ChatMessageType } from "./ChatMessage";
 import ChatInput from "./ChatInput";
-import AdContainer from "@/components/ads/AdContainer";
-import { shouldShowAd } from "@/lib/ads/ad-placement";
 
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string>(() => {
-    try {
-      return crypto.randomUUID();
-    } catch {
-      return Math.random().toString(36).slice(2);
-    }
-  });
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -29,11 +20,6 @@ export default function Chat() {
     setMessages([]);
     setInput("");
     setError(null);
-    try {
-      setSessionId(crypto.randomUUID());
-    } catch {
-      setSessionId(Math.random().toString(36).slice(2));
-    }
   }
 
   async function send() {
@@ -80,13 +66,8 @@ export default function Chat() {
     }
   }
 
-  // Deterministic ad placement: local counters during render (no Math.random)
-  let localAdsShown = 0;
-  let localLastAdIndex: number | null = null;
-
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Header actions inside chat for mobile clarity */}
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950/50 px-4 py-3 backdrop-blur">
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
@@ -102,7 +83,6 @@ export default function Chat() {
         </button>
       </div>
 
-      {/* Messages */}
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto px-4 py-6 sm:px-6"
@@ -138,34 +118,9 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Message renderer + deterministic NativeAd insertion (UI-only, not sent to /api/chat) */}
-          {messages.map((m, idx) => {
-            const shouldInsertAd =
-              !loading &&
-              shouldShowAd({
-                messageCount: messages.length,
-                adsShown: localAdsShown,
-                isGenerating: loading,
-                sessionId,
-                lastAdMessageIndex: localLastAdIndex,
-                currentMessageIndex: idx,
-                currentMessageRole: m.role,
-              });
-
-            if (shouldInsertAd) {
-              localAdsShown += 1;
-              localLastAdIndex = idx;
-            }
-
-            return (
-              <div key={m.id} className="flex flex-col gap-2">
-                <ChatMessage message={m} />
-                {shouldInsertAd && (
-                  <AdContainer slot={`session-${sessionId.slice(0, 8)}-after-${idx + 1}`} />
-                )}
-              </div>
-            );
-          })}
+          {messages.map((m) => (
+            <ChatMessage key={m.id} message={m} />
+          ))}
 
           {loading && (
             <div className="flex gap-3">
@@ -195,12 +150,11 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Sticky input - never covered by ad */}
       <div className="border-t border-zinc-800 bg-zinc-950 p-4 sm:p-6">
         <div className="mx-auto w-full max-w-3xl">
           <ChatInput value={input} onChange={setInput} onSend={send} loading={loading} />
           <p className="mt-3 text-center text-xs text-zinc-500">
-            Groq-powered · Sponsored content is clearly labeled and separate from AI responses
+            Groq-powered · This is a testing environment
           </p>
         </div>
       </div>
