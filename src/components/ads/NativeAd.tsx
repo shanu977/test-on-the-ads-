@@ -160,7 +160,7 @@ export default function NativeAd({ turnId }: Props) {
           <div
             ref={containerRef}
             id={CONTAINER_ID}
-            className="w-[260px] max-w-full h-full [&_img]:max-w-full [&_img]:h-auto"
+            className="w-[100px] max-w-full h-full [&_img]:max-w-full [&_img]:h-auto"
           />
         </div>
       </div>
