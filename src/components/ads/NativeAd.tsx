@@ -155,8 +155,8 @@ export default function NativeAd({ turnId }: Props) {
           <span className="text-[11px] font-normal tracking-wide text-zinc-500">Advertisement</span>
         </div>
 
-        {/* Real Adsterra — EXACT 336x280 */}
-        <div className="rounded-lg border border-zinc-800/30 bg-zinc-900/10 overflow-hidden w-[336px] max-w-full h-[280px]">
+        {/* Real Adsterra — fixed to fit 260x230 outer (disclosure + 180px creative) */}
+        <div className="rounded-lg border border-zinc-800/30 bg-zinc-900/10 overflow-hidden w-full h-[180px]">
           <div
             ref={containerRef}
             id={CONTAINER_ID}
