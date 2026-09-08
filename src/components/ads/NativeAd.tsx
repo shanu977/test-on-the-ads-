@@ -143,7 +143,7 @@ export default function NativeAd({ turnId }: Props) {
       {/* Sponsored shell — auto height, disclosure outside fixed ad box */}
       <div
         className={`rounded-xl border bg-zinc-900/20 ${
-          hasContent ? "border-zinc-800/30 w-[400px] max-w-full h-[170px] p-2 sm:p-2.5" : "border-transparent p-0"
+          hasContent ? "border-zinc-800/30 w-[370px] max-w-full h-[150px] p-2 sm:p-2.5" : "border-transparent p-0"
         }`}
       >
         {/* Disclosure — outside fixed 336x280, so creative is exact */}
