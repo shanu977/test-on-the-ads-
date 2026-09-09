@@ -143,7 +143,7 @@ export default function NativeAd({ turnId }: Props) {
       {/* Sponsored shell — auto height, disclosure outside fixed ad box */}
       <div
         className={`rounded-xl border bg-zinc-900/20 ${
-          hasContent ? "border-zinc-800/30 w-[260px] max-w-full h-[230px] p-2 sm:p-2.5" : "border-transparent p-0"
+          hasContent ? "border-zinc-800/30 w-[260px] max-w-full min-h-[230px] p-2 sm:p-2.5" : "border-transparent p-0"
         }`}
       >
         {/* Disclosure — outside fixed 336x280, so creative is exact */}
@@ -155,8 +155,8 @@ export default function NativeAd({ turnId }: Props) {
           <span className="text-[11px] font-normal tracking-wide text-zinc-500">Advertisement</span>
         </div>
 
-        {/* Real Adsterra — fixed to fit 260x230 outer (disclosure + 180px creative) */}
-        <div className="rounded-lg border border-zinc-800/30 bg-zinc-900/10 overflow-hidden w-full h-[180px]">
+        {/* Real Adsterra — min 180px, expands if creative is taller, no clipping */}
+        <div className="rounded-lg border border-zinc-800/30 bg-zinc-900/10 overflow-hidden w-full min-h-[180px]">
           <div
             ref={containerRef}
             id={CONTAINER_ID}
